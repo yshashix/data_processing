@@ -1,5 +1,6 @@
 from kfp import dsl
 from kfp import compiler
+#from kfp import kubernetes
 from kfp.dsl import (Input, Output, Dataset, Model, Metrics, ClassificationMetrics)
 
 intel_xgb_d4p_image = "yatix/intel-xgboost-daal4py:latest"
@@ -451,7 +452,8 @@ def intel_xgboost_daal4py_pipeline(
     create_train_test_set_op = create_train_test_set(
         data = load_data_op.outputs['credit_risk_dataset']
     )
-    
+#    kubernetes.add_node_selector(task=create_train_test_set_op, label_key='intelvm', label_value='gpu')
+
     preprocess_features_op = preprocess_features(
         x_train = create_train_test_set_op.outputs['x_train_data'],
         x_test = create_train_test_set_op.outputs['x_test_data']
@@ -461,6 +463,7 @@ def intel_xgboost_daal4py_pipeline(
         x_train = preprocess_features_op.outputs['x_train_processed'], 
         y_train = create_train_test_set_op.outputs['y_train_data']        
     )
+#    kubernetes.add_node_selector(task=create_train_test_set_op, label_key='intelvm', label_value='gpu')
 
     convert_xgboost_to_daal4py_op = convert_xgboost_to_daal4py(
         xgb_model = train_xgboost_model_op.outputs['xgb_model']
@@ -471,6 +474,8 @@ def intel_xgboost_daal4py_pipeline(
         y_test = create_train_test_set_op.outputs['y_test_data'],
         daal4py_model = convert_xgboost_to_daal4py_op.outputs['daal4py_model']
     )
+#     kubernetes.add_node_selector(task=daal4py_inference_op, label_key='intelvm', label_value='gpu')
+
 
     plot_roc_curve_op = plot_roc_curve(
         predictions = daal4py_inference_op.outputs['prediction_data']
