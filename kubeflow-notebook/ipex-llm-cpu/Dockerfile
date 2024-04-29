@@ -1,0 +1,66 @@
+
+ARG BASE_IMG=docker.io/kubeflownotebookswg/jupyter
+FROM $BASE_IMG
+
+# common environemnt variables
+ENV NB_USER jovyan
+ENV NB_UID 1000
+
+# install - conda packages
+# NOTE: we use mamba to speed things up
+RUN mamba install -y -q \
+    bokeh==3.2.2 \
+    cloudpickle==2.2.1 \
+    dill==0.3.7 \
+    ipympl==0.9.3 \
+    matplotlib==3.8.0 \
+    pandas==2.1.1 \
+    scikit-image==0.22.0 \
+    scikit-learn==1.3.1 \
+    scipy==1.11.3 \
+    seaborn==0.13.0 \
+    xgboost==1.7.6 \
+ && mamba clean -a -f -y
+
+# install - requirements.txt
+COPY --chown=${NB_USER}:users requirements.txt /tmp/requirements.txt
+RUN python3 -m pip install -r /tmp/requirements.txt --quiet --no-cache-dir \
+ && rm -f /tmp/requirements.txt
+
+# switch to NB_UID for installs
+USER root
+
+# Configure ipex-llm for CPU
+RUN mkdir -p ipex-llm && \
+    cd ./ipex-llm && \
+    git clone https://github.com/intel-analytics/ipex-llm-tutorial && \
+    # Download all-in-one benchmark
+    git clone https://github.com/intel-analytics/IPEX-LLM && \
+    cp -r ./IPEX-LLM/python/llm/dev/benchmark/ ./benchmark && \
+    # Copy chat.py script
+    python3 -m pip install --upgrade colorama && \
+    cp -r ./IPEX-LLM/python/llm/portable-zip/ ./portable-zip && \
+    # Install all-in-one dependencies
+    python3 -m pip install --upgrade omegaconf && \
+    # Install vllm dependencies
+    python3 -m pip install --upgrade fastapi && \
+    python3 -m pip install --upgrade "uvicorn[standard]" && \
+    # Add Qwen support
+    python3 -m pip install --upgrade transformers_stream_generator einops && \
+    # Copy vLLM-Serving
+    cp -r ./IPEX-LLM/python/llm/example/CPU/vLLM-Serving/ ./vLLM-Serving && \
+    rm -rf ./IPEX-LLM && \
+    # Fix vllm service 
+    python3 -m pip install pydantic==1.10.11 && \
+    # Install ipex-llm-cpu
+    cd /ipex-llm && \
+    python3 -m pip install --pre --upgrade ipex-llm[all] && \
+    # Fix CVE-2024-22195
+    python3 -m pip install Jinja2==3.1.3 && \
+    python3 -m pip install torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 --index-url https://download.pytorch.org/whl/cpu && \
+    python3 -m pip install intel-extension-for-pytorch==2.2.0 && \
+    python3 -m pip install oneccl_bind_pt==2.2.0 --extra-index-url https://pytorch-extension.intel.com/release-whl/stable/cpu/us/ && \
+    python3 -m pip install transformers==4.36.2
+
+# switch to NB_UID for installs
+USER $NB_UID
