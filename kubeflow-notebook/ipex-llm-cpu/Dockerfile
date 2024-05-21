@@ -33,7 +33,6 @@ USER root
 # Configure ipex-llm for CPU
 RUN mkdir -p ipex-llm && \
     cd ./ipex-llm && \
-    git clone https://github.com/intel-analytics/ipex-llm-tutorial && \
     # Download all-in-one benchmark
     git clone https://github.com/intel-analytics/IPEX-LLM && \
     cp -r ./IPEX-LLM/python/llm/dev/benchmark/ ./benchmark && \
@@ -41,6 +40,7 @@ RUN mkdir -p ipex-llm && \
     python3 -m pip install --upgrade colorama && \
     cp -r ./IPEX-LLM/python/llm/portable-zip/ ./portable-zip && \
     # Install all-in-one dependencies
+    apt-get -yq update && apt-get install -y numactl && \
     python3 -m pip install --upgrade omegaconf && \
     # Install vllm dependencies
     python3 -m pip install --upgrade fastapi && \
@@ -53,11 +53,10 @@ RUN mkdir -p ipex-llm && \
     # Fix vllm service 
     python3 -m pip install pydantic==1.10.11 && \
     # Install ipex-llm-cpu
-    cd /ipex-llm && \
     python3 -m pip install --pre --upgrade ipex-llm[all] && \
     # Fix CVE-2024-22195
     python3 -m pip install Jinja2==3.1.3 && \
-    python3 -m pip install torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 --index-url https://download.pytorch.org/whl/cpu && \
+    python3 -m pip install torch==2.2.0 --index-url https://download.pytorch.org/whl/cpu && \
     python3 -m pip install intel-extension-for-pytorch==2.2.0 && \
     python3 -m pip install oneccl_bind_pt==2.2.0 --extra-index-url https://pytorch-extension.intel.com/release-whl/stable/cpu/us/ && \
     python3 -m pip install transformers==4.36.2
